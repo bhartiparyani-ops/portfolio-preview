@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfolio Monitor Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a working replica of the app (top tabs, cards) with a feedback rail under every screen. */
+:root {
+  --bg: #f3f5f8; --surface: #ffffff; --ink: #17202e; --muted: #5d6878; --line: #e1e5eb;
+  --accent: #1f5fbf; --accent-soft: #e7eefb; --up: #13804a; --down: #c2383a; --warn: #a86b12;
+  --map-up: #2e9a5e; --map-flat: #d9dee5; --map-down: #cf4c4c;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --radius: 12px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e131a; --surface: #161d27; --ink: #e5eaf1; --muted: #98a3b3; --line: #273141;
+  --accent: #6ea6f2; --accent-soft: #1b2a40; --up: #46c283; --down: #f07070; --warn: #e3ab52;
+  --map-up: #2a8a55; --map-flat: #3a4556; --map-down: #b84848; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #161d27; --ink: #e5eaf1; --muted: #98a3b3; --line: #273141;
+  --accent: #6ea6f2; --accent-soft: #1b2a40; --up: #46c283; --down: #f07070; --warn: #e3ab52;
+  --map-up: #2a8a55; --map-flat: #3a4556; --map-down: #b84848; color-scheme: dark; }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.45; margin: 0; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.05rem; font-weight: 600; }
+h3 { font-size: .95rem; font-weight: 600; }
+.muted { color: var(--muted); }
+.small { font-size: .82rem; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .down { color: var(--down); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* intro */
+.intro { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; }
+.intro p { margin: 6px 0 0; max-width: 64ch; color: var(--muted); }
+.tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .75rem; font-weight: 600;
+  letter-spacing: .03em; text-transform: uppercase; background: var(--accent-soft); color: var(--accent); }
+
+/* app frame */
+.app { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.appbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.brand { font-weight: 700; display: flex; gap: 8px; align-items: center; }
+.brand-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); }
+.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tabs button { border: 0; background: none; padding: 7px 11px; border-radius: 8px; white-space: nowrap; color: var(--muted); font-weight: 500; }
+.tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
+.updatebtn { border: 0; background: var(--accent); color: #fff; padding: 7px 12px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
+.updatebox { display: flex; gap: 10px; align-items: center; }
+.screen { padding: 18px 16px; background: var(--bg); display: grid; gap: 14px; }
+.screen-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
+.grid { display: grid; gap: 14px; }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g32 { grid-template-columns: 3fr 2fr; }
+@media (max-width: 860px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g2, .g32 { grid-template-columns: 1fr; } }
+@media (max-width: 420px) { .g4 { grid-template-columns: 1fr; } }
+
+.kpi .label { color: var(--muted); font-size: .8rem; }
+.kpi .value { font-size: 1.35rem; font-weight: 600; margin-top: 2px; }
+.kpi .delta { font-size: .82rem; margin-top: 2px; }
+.kpi svg { display: block; width: 100%; height: 34px; margin-top: 6px; }
+.cardhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: none; padding: 4px 10px; color: var(--muted); font-size: .8rem; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { fill: var(--muted); font-size: 10px; font-family: var(--sans); }
+
+.barrow { display: grid; grid-template-columns: minmax(80px, 38%) 1fr auto; gap: 8px; align-items: center; margin: 6px 0; }
+.barrow .track { height: 10px; background: var(--accent-soft); border-radius: 4px; overflow: hidden; }
+.barrow .fill { height: 100%; background: var(--accent); border-radius: 4px; }
+.mover { display: grid; grid-template-columns: minmax(90px, 40%) 1fr; gap: 8px; align-items: center; margin: 5px 0;
+  border: 0; background: none; width: 100%; text-align: left; padding: 2px 0; border-radius: 6px; }
+.mover:hover { background: var(--accent-soft); }
+.mover .axis { position: relative; height: 16px; }
+.mover .axis::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.mover .b { position: absolute; top: 3px; height: 10px; border-radius: 3px; }
+.mover .lbl { position: absolute; top: -1px; font-size: .75rem; }
+
+.map { position: relative; width: 100%; aspect-ratio: 16 / 7; border-radius: 8px; overflow: hidden; }
+@media (max-width: 560px) { .map { aspect-ratio: 4 / 3; } }
+.tile { position: absolute; border: 2px solid var(--surface); border-radius: 6px; padding: 6px; overflow: hidden;
+  color: #fff; font-size: .75rem; line-height: 1.25; cursor: pointer; background: none; text-align: left; }
+.tile b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile.flat { color: var(--ink); }
+
+.alert { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.alert:last-child { border-bottom: 0; }
+.sev { flex: none; width: 4px; border-radius: 2px; }
+.sev.high { background: var(--down); } .sev.medium { background: var(--warn); } .sev.info { background: var(--line); }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .74rem; background: var(--accent-soft); color: var(--accent); margin-right: 4px; }
+.pill.grey { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 720px; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: .78rem; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tbody tr { cursor: pointer; } tbody tr:hover { background: var(--accent-soft); }
+td.r, th.r { text-align: right; }
+.wbar { display: inline-block; width: 60px; height: 6px; background: var(--accent-soft); border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+.wbar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.facts div span { display: block; color: var(--muted); font-size: .78rem; }
+.itab { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.itab button { border: 0; background: none; padding: 6px 10px; color: var(--muted); border-bottom: 2px solid transparent; }
+.itab button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.item { padding: 8px 0; border-bottom: 1px solid var(--line); } .item:last-child { border-bottom: 0; }
+.item a { color: var(--ink); font-weight: 500; text-decoration: none; } .item a:hover { text-decoration: underline; }
+
+.toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.toggle { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .steps { grid-template-columns: 1fr; } }
+.step { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.step .n { font-family: var(--mono); color: var(--accent); font-size: .8rem; }
+.field { display: grid; gap: 4px; margin-bottom: 10px; }
+.field label { font-size: .82rem; color: var(--muted); }
+.field input, .field textarea, .field select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 9px; width: 100%; box-sizing: border-box; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 12px; font-weight: 500; }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* feedback rail under each screen */
+.rail { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between;
+  border: 1px dashed var(--accent); background: var(--accent-soft); border-radius: var(--radius); padding: 10px 14px; }
+.stars { display: inline-flex; gap: 2px; }
+.stars button { border: 0; background: none; font-size: 1.25rem; line-height: 1; color: var(--line); padding: 2px; }
+.stars button.on { color: var(--warn); }
+.feedback { margin-top: 18px; display: grid; gap: 14px; grid-template-columns: 3fr 2fr; }
+@media (max-width: 860px) { .feedback { grid-template-columns: 1fr; } }
+.choice { display: flex; gap: 6px; flex-wrap: wrap; }
+.choice button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px; }
+.choice button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.status { font-size: .85rem; min-height: 1.2em; }
+.resp { border-top: 1px solid var(--line); padding: 10px 0; }
+.resp .who { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.resp img { width: 22px; height: 22px; border-radius: 50%; }
+@media (prefers-reduced-motion: no-preference) { .fill, .b { transition: width .3s ease; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="intro">
+    <div>
+      <span class="tag">Design preview · sample data</span>
+      <h1 style="margin-top:8px">Portfolio Monitor</h1>
+      <p>A personal app that combines your demat accounts in one place, then collects prices, official NSE filings
+        and news from trusted publishers for every stock. This clickable preview starts with <b>five sample stocks</b>;
+        add a few of your own to see how it feels with your portfolio, then tell me what works and what doesn't.
+        Stocks you add stay in your browser only.</p>
+    </div>
+    <div class="small muted" id="whoami"></div>
+  </div>
+
+  <div class="app" id="app">
+    <div class="appbar">
+      <div class="brand"><span class="brand-dot"></span>Portfolio Monitor</div>
+      <nav class="tabs" role="tablist" id="tabs"></nav>
+      <div class="updatebox">
+        <span class="small muted" style="text-align:right">Last update<br><b id="lastupd">today 09:41</b></span>
+        <button class="updatebtn" id="updbtn">🔄 Update all data</button>
+      </div>
+    </div>
+    <section class="screen" id="screen" aria-live="polite"></section>
+  </div>
+
+  <div class="feedback">
+    <div class="card" id="formcard">
+      <h2>Your overall feedback</h2>
+      <p class="muted small" style="margin:4px 0 12px">Star ratings you give under each screen are sent together with these answers.</p>
+      <div class="field"><label for="f_name">Your name (optional)</label><input id="f_name" maxlength="80" placeholder="So I know who to thank"></div>
+      <div class="field"><label>Overall, how easy is it to understand your portfolio?</label><div class="stars" id="overallStars"></div></div>
+      <div class="field"><label>Would you use something like this?</label><div class="choice" id="useChoice"></div></div>
+      <div class="field"><label for="f_confusing">What was confusing or hard to find?</label><textarea id="f_confusing" rows="3"></textarea></div>
+      <div class="field"><label for="f_missing">What's missing that you'd want?</label><textarea id="f_missing" rows="3"></textarea></div>
+      <div class="field"><label for="f_other">Anything else?</label><textarea id="f_other" rows="2"></textarea></div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <button class="btn primary" id="submitBtn">Submit feedback</button>
+        <span class="status" id="status"></span>
+      </div>
+      <div id="copyFallback" hidden style="margin-top:10px">
+        <label for="copyBox" class="small muted">Your feedback, ready to send to the person who shared this page:</label>
+        <textarea id="copyBox" rows="8" readonly style="width:100%; box-sizing:border-box; margin-top:4px; border:1px solid var(--line); border-radius:8px; padding:8px; background:var(--surface)"></textarea>
+      </div>
+    </div>
+    <div class="card">
+      <h2>How to give feedback</h2>
+      <ol class="small" style="padding-left:18px; margin:8px 0 0; display:grid; gap:6px">
+        <li>Add a few of your own stocks with <b>➕ Add your own stocks</b> (on Overview, Holdings or Portfolio setup).</li>
+        <li>Click the tabs and try things: open a stock from <b>Holdings</b> or <b>Today's movers</b>, change chart periods, filter alerts.</li>
+        <li>Rate each screen with the stars underneath it.</li>
+        <li>To point at something specific, mention the screen and what you clicked in the boxes here.</li>
+        <li>Fill in the questions and press the button under them, then send the copied text to the person who shared this page (WhatsApp or email is fine).</li>
+      </ol>
+      <p class="small muted" style="margin-top:12px" id="privacyNote">Nothing you type or add on this page is sent anywhere automatically. The stocks you add stay in your browser only.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- sample data (made up) ---------------- */
+const SCREENS = [
+  ["overview", "Overview"], ["holdings", "Holdings"], ["stock", "Stock view"],
+  ["news", "News & Alerts"], ["sources", "Sources"], ["setup", "Portfolio setup"],
+];
+/* Five sample stocks shown by default (made-up quantities and prices). */
+const SAMPLE = [
+  { id: "INFY", name: "Infosys", sector: "Technology", src: "Zerodha", qty: 60, avg: 1390, px: 1512.4, d: 1.8, seed: 3 },
+  { id: "HDFCBANK", name: "HDFC Bank", sector: "Financial Services", src: "Zerodha, Kotak Neo", qty: 80, avg: 1540, px: 1748.2, d: -0.6, seed: 5 },
+  { id: "LT", name: "Larsen & Toubro", sector: "Industrials", src: "Kotak Neo", qty: 25, avg: 3310, px: 3655.0, d: 2.4, seed: 7 },
+  { id: "ITC", name: "ITC", sector: "Consumer Defensive", src: "Zerodha", qty: 300, avg: 412, px: 405.1, d: -2.1, seed: 17 },
+  { id: "RVNL", name: "Rail Vikas Nigam", sector: "Industrials", src: "Kotak Neo", qty: 400, avg: 193, px: 351.0, d: 5.6, seed: 19 },
+];
+const SECTORS = ["Technology", "Financial Services", "Industrials", "Consumer Defensive", "Consumer Cyclical",
+  "Healthcare", "Energy", "Basic Materials", "Utilities", "Communication Services", "Real Estate", "Other"];
+/* Sample alerts and news (only for the sample stocks). */
+const ALERTS = [
+  { lvl: "high", h: "RVNL", t: "NSE filing: Bagging/Receiving of orders/contracts", d: "Letter of Award from a state power utility for a transmission project.", date: "2026-11-05" },
+  { lvl: "medium", h: "ITC", t: "Board meeting: Financial Results on 12 Nov", d: "To consider the unaudited results for the quarter ended September.", date: "2026-11-12" },
+  { lvl: "medium", h: "INFY", t: "Interim dividend ₹22 per share (ex-date 18 Nov)", d: "", date: "2026-11-18" },
+];
+const FEED = [
+  { k: "news", h: "RVNL", t: "RVNL shares jump after fresh order win; stock up 30% in a month", s: "Moneycontrol", date: "2026-11-06" },
+  { k: "announcement", h: "RVNL", t: "Bagging/Receiving of orders/contracts", s: "NSE India", date: "2026-11-05", imp: true },
+  { k: "news", h: "INFY", t: "Infosys raises FY27 revenue guidance after strong Q2 deal wins", s: "Mint", date: "2026-11-04" },
+  { k: "event", h: "ITC", t: "Financial Results / Dividend — board meeting 12 Nov", s: "NSE India", date: "2026-11-12" },
+  { k: "action", h: "INFY", t: "Interim Dividend - Rs 22 Per Share", s: "NSE India", date: "2026-11-18" },
+  { k: "news", h: "HDFCBANK", t: "HDFC Bank's loan growth beats estimates in Q2 update", s: "The Economic Times", date: "2026-11-03" },
+  { k: "custom", h: "LT", t: "F&O: open interest up 8% this week, futures at small premium", s: "Your source: F&O tracker", date: "2026-11-06" },
+];
+const KIND = { news: "📰 News", announcement: "🏛️ NSE filing", event: "📅 Event", action: "📅 Dividend / action", custom: "🧩 Your source" };
+
+/* seeded random walk for price history */
+function series(seed, n, end) {
+  let s = seed * 9973 % 2147483647; const r = () => (s = s * 16807 % 2147483647) / 2147483647;
+  const out = [1]; for (let i = 1; i < n; i++) out.push(out[i - 1] * (1 + (r() - 0.48) * 0.035));
+  const k = end / out[n - 1]; return out.map(v => v * k);
+}
+/* The holdings on screen = sample stocks (unless removed) + stocks the reviewer added.
+   Added stocks are kept only in this reviewer's browser. */
+let mine = [], hiddenSamples = [];
+let H = [], TOTAL = 0, COST = 0, DAY = 0, PORT = [];
+function hashSeed(s) { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 100000; return h + 1; }
+function recompute() {
+  H = SAMPLE.filter(s => !hiddenSamples.includes(s.id)).map(s => ({ ...s })).concat(mine.map(m => ({ ...m, yours: true })));
+  H.forEach(h => {
+    h.hist = series(h.seed, 250, h.px);
+    if (h.d != null) h.hist[248] = h.px / (1 + h.d / 100);   // sample stocks: fixed "today" move
+    else h.d = (h.hist[249] / h.hist[248] - 1) * 100;         // your stocks: from the simulated history
+    h.value = h.qty * h.px; h.cost = h.qty * h.avg; h.pl = (h.px / h.avg - 1) * 100;
+  });
+  TOTAL = H.reduce((a, h) => a + h.value, 0); COST = H.reduce((a, h) => a + h.cost, 0);
+  H.forEach(h => h.w = TOTAL ? h.value / TOTAL * 100 : 0);
+  DAY = H.reduce((a, h) => a + h.value - h.value / (1 + h.d / 100), 0);
+  PORT = H.length ? H[0].hist.map((_, i) => H.reduce((a, h) => a + h.qty * h.hist[i], 0)) : [];
+  if (!H.find(h => h.id === state.stock) && H.length) state.stock = H[0].id;
+}
+function saveMine() { try { localStorage.setItem("pm_mine", JSON.stringify({ mine, hiddenSamples })); } catch (e) {} }
+
+/* ---------------- formatting ---------------- */
+function inr(v) {
+  const neg = v < 0; v = Math.round(Math.abs(v)); let s = String(v);
+  if (s.length > 3) { const last = s.slice(-3); let head = s.slice(0, -3); const parts = [];
+    while (head.length > 2) { parts.unshift(head.slice(-2)); head = head.slice(0, -2); } if (head) parts.unshift(head);
+    s = parts.join(",") + "," + last; }
+  return (neg ? "−₹" : "₹") + s;
+}
+const pct = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2) + "%";
+const cls = v => v > 0 ? "up" : v < 0 ? "down" : "";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const byId = id => H.find(h => h.id === id);
+const nameOf = id => (byId(id) || { name: id === "SGB" ? "Sovereign Gold Bond" : id }).name;
+
+/* ---------------- tiny SVG charts ---------------- */
+function spark(vals, color, w = 120, h = 34) {
+  const min = Math.min(...vals), max = Math.max(...vals), sx = w / (vals.length - 1), sy = v => h - 3 - (v - min) / (max - min || 1) * (h - 6);
+  const pts = vals.map((v, i) => `${(i * sx).toFixed(1)},${sy(v).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function area(vals, opts = {}) {
+  const W = 640, Hh = 230, L = 52, B = 22, T = 10, R = 8;
+  const ref = opts.ref; const all = ref != null ? vals.concat([ref]) : vals;
+  let min = Math.min(...all), max = Math.max(...all); const pad = (max - min) * 0.08 || 1; min -= pad; max += pad;
+  const x = i => L + i * (W - L - R) / (vals.length - 1), y = v => T + (max - v) / (max - min) * (Hh - T - B);
+  const line = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const color = vals[vals.length - 1] >= vals[0] ? "var(--up)" : "var(--down)";
+  let grid = ""; for (let k = 0; k <= 3; k++) { const v = min + (max - min) * k / 3; grid += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${opts.fmt ? opts.fmt(v) : v.toFixed(0)}</text>`; }
+  const refLine = ref != null ? `<line x1="${L}" x2="${W - R}" y1="${y(ref)}" y2="${y(ref)}" stroke="var(--muted)" stroke-dasharray="4 4"/><text x="${L + 4}" y="${y(ref) - 4}">${esc(opts.refLabel || "")}</text>` : "";
+  const end = `<circle cx="${x(vals.length - 1)}" cy="${y(vals[vals.length - 1])}" r="3.5" fill="${color}"/>`;
+  return `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="${esc(opts.label || "chart")}">${grid}
+    <polygon points="${L},${Hh - B} ${line} ${W - R},${Hh - B}" fill="${color}" opacity=".08"/>
+    <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2"/>${refLine}${end}
+    <text x="${L}" y="${Hh - 6}">${esc(opts.start || "")}</text><text x="${W - R}" y="${Hh - 6}" text-anchor="end">Today</text></svg>`;
+}
+function squarify(items, x, y, w, h) {   // simple slice-and-dice alternating treemap
+  const out = []; let rest = items.slice(); let total = rest.reduce((a, b) => a + b.v, 0);
+  while (rest.length) {
+    const horiz = w >= h, row = [rest.shift()]; let rv = row[0].v;
+    while (rest.length && rv / total < 0.38) { row.push(rest.shift()); rv += row[row.length - 1].v; }
+    const frac = rv / total, size = horiz ? w * frac : h * frac; let off = 0;
+    row.forEach(it => { const f = it.v / rv;
+      out.push(horiz ? { ...it, x, y: y + off, w: size, h: h * f } : { ...it, x: x + off, y, w: w * f, h: size });
+      off += (horiz ? h : w) * f; });
+    if (horiz) { x += size; w -= size; } else { y += size; h -= size; } total -= rv;
+  }
+  return out;
+}
+
+/* ---------------- state ---------------- */
+const state = { screen: "overview", stock: "RVNL", period: "3M", speriod: "6M", alertLvl: "all", stab: "news",
+  feedKind: "all", sites: { "Moneycontrol": true, "The Economic Times": true, "Mint": true, "Business Standard": true, "BusinessLine": true, "Financial Express": true, "CNBC-TV18": true, "NDTV Profit": false } };
+const fb = { name: "", ratings: {}, overall: 0, use: "", confusing: "", missing: "", other: "" };
+const PERIOD = { "1M": 22, "3M": 64, "6M": 128, "1Y": 250 };
+
+/* ---------------- screens ---------------- */
+function kpis() {
+  const gain = TOTAL - COST, dayPct = DAY / (TOTAL - DAY) * 100;
+  return `<div class="grid g4">
+    <div class="card kpi"><div class="label">Current value</div><div class="value num">${inr(TOTAL)}</div><div class="delta ${cls(dayPct)}">${pct(dayPct)} today</div>${spark(PORT.slice(-64), "var(--accent)")}</div>
+    <div class="card kpi"><div class="label">Invested</div><div class="value num">${inr(COST)}</div><div class="delta muted">${H.length} holdings · ${new Set(H.flatMap(h => String(h.src).split(",").map(s => s.trim()))).size} accounts</div></div>
+    <div class="card kpi"><div class="label">Total gain / loss</div><div class="value num ${cls(gain)}">${inr(gain)}</div><div class="delta ${cls(gain)}">${pct(gain / COST * 100)}</div></div>
+    <div class="card kpi"><div class="label">Today's change</div><div class="value num ${cls(DAY)}">${inr(DAY)}</div><div class="delta ${cls(dayPct)}">${pct(dayPct)}</div></div></div>`;
+}
+function seg(name, opts, cur) {
+  return `<div class="seg" role="group">${opts.map(o => `<button data-seg="${name}" data-val="${o}" aria-pressed="${o === cur}">${o}</button>`).join("")}</div>`;
+}
+function alertRows(list) {
+  return list.map(a => `<div class="alert"><span class="sev ${a.lvl}"></span><div><b>${esc(nameOf(a.h))}</b> — ${esc(a.t)}${a.d ? `<div class="small muted">${esc(a.d)}</div>` : ""}</div></div>`).join("");
+}
+function addForm(open) {
+  return `<details class="card" id="addCard" ${open ? "open" : ""}><summary style="cursor:pointer"><b>➕ Add your own stocks to try it</b>
+      <span class="small muted"> · saved only in your browser, nobody else sees them</span></summary>
+    <div class="grid g4" style="margin-top:12px">
+      <div class="field"><label for="a_name">Stock name *</label><input id="a_name" placeholder="e.g. Tata Motors" maxlength="60"></div>
+      <div class="field"><label for="a_sym">NSE symbol</label><input id="a_sym" placeholder="e.g. TATAMOTORS" maxlength="20"></div>
+      <div class="field"><label for="a_sector">Sector</label><select id="a_sector">${SECTORS.map(s => `<option>${s}</option>`).join("")}</select></div>
+      <div class="field"><label for="a_src">Account</label><input id="a_src" placeholder="e.g. Zerodha" maxlength="30"></div>
+      <div class="field"><label for="a_qty">Quantity *</label><input id="a_qty" type="number" min="0" step="any" inputmode="decimal"></div>
+      <div class="field"><label for="a_avg">Average cost (₹) *</label><input id="a_avg" type="number" min="0" step="any" inputmode="decimal"></div>
+      <div class="field"><label for="a_px">Current price (₹)</label><input id="a_px" type="number" min="0" step="any" inputmode="decimal" placeholder="blank = same as cost"></div>
+      <div class="field" style="align-self:end"><button class="btn primary" id="addStock">Add stock</button></div>
+    </div>
+    <p class="small muted" id="addMsg" style="margin:0">In the real app, live prices, NSE filings and news are fetched automatically. In this preview, enter the
+      current price yourself; price trends are simulated.</p>
+  </details>`;
+}
+function emptyState() {
+  return `<div class="card"><h2>No stocks to show</h2><p class="muted">Add a stock below, or bring back the five sample stocks.</p>
+    <button class="btn" id="resetSample">Restore sample stocks</button></div>${addForm(true)}`;
+}
+function overview() {
+  if (!H.length) return emptyState();
+  const n = PERIOD[state.period], vals = PORT.slice(-n), ch = (vals[vals.length - 1] / vals[0] - 1) * 100;
+  const sectors = {}; H.forEach(h => sectors[h.sector] = (sectors[h.sector] || 0) + h.value);
+  const sec = Object.entries(sectors).sort((a, b) => b[1] - a[1]); const smax = sec[0][1];
+  const movers = H.slice().sort((a, b) => b.d - a.d); const mmax = Math.max(0.1, ...movers.map(h => Math.abs(h.d)));
+  const alerts = allAlerts();
+  const tiles = squarify(H.slice().sort((a, b) => b.value - a.value).map(h => ({ id: h.id, v: h.value, h })), 0, 0, 100, 100);
+  return `${kpis()}
+  <div class="grid g32">
+    <div class="card"><div class="cardhead"><h2>Portfolio value</h2>${seg("period", Object.keys(PERIOD), state.period)}</div>
+      <div class="chart">${area(vals, { ref: COST, refLabel: "Invested", fmt: v => (v / 1e5).toFixed(1) + "L", start: state.period + " ago", label: "Portfolio value over time" })}</div>
+      <div class="small muted">${state.period}: <b class="${cls(ch)}">${pct(ch)}</b> · based on today's quantities</div></div>
+    <div class="card"><h2 style="margin-bottom:8px">Where your money is</h2>
+      ${sec.map(([s, v]) => `<div class="barrow"><span class="small">${esc(s)}</span><span class="track"><span class="fill" style="width:${v / smax * 100}%"></span></span><span class="small num">${(v / TOTAL * 100).toFixed(0)}%</span></div>`).join("")}</div>
+  </div>
+  <div class="card"><div class="cardhead"><h2>Portfolio map</h2><span class="small muted">Size = value · colour = today's move · click a box</span></div>
+    <div class="map">${tiles.map(t => { const d = t.h.d, a = Math.min(Math.abs(d) / 5, 1);
+      const bg = d > 0.3 ? `color-mix(in srgb, var(--map-up) ${40 + a * 60}%, var(--map-flat))` : d < -0.3 ? `color-mix(in srgb, var(--map-down) ${40 + a * 60}%, var(--map-flat))` : "var(--map-flat)";
+      return `<button class="tile ${Math.abs(d) <= 0.3 ? "flat" : ""}" data-open="${t.id}" style="left:${t.x}%;top:${t.y}%;width:${t.w}%;height:${t.h}%;background:${bg}" title="${esc(t.h.name)}: ${inr(t.h.value)}, today ${pct(d)}"><b>${esc(t.h.name)}</b>${pct(d)}</button>`; }).join("")}</div></div>
+  <div class="grid g2">
+    <div class="card"><h2 style="margin-bottom:8px">Today's movers</h2>
+      ${movers.map(h => { const w = Math.abs(h.d) / mmax * 48; return `<button class="mover" data-open="${h.id}"><span class="small">${esc(h.name)}</span><span class="axis"><span class="b" style="${h.d >= 0 ? "left:50%" : `left:${50 - w}%`};width:${w}%;background:${h.d >= 0 ? "var(--up)" : "var(--down)"}"></span><span class="lbl ${cls(h.d)}" style="${h.d >= 0 ? `left:${51 + w}%` : `right:${51 + w}%`}">${pct(h.d)}</span></span></button>`; }).join("")}
+      <div class="small muted" style="margin-top:6px">Click a stock to open it.</div></div>
+    <div class="card"><h2 style="margin-bottom:4px">Needs your attention (${alerts.length})</h2>${alertRows(alerts.slice(0, 5)) || '<p class="muted small">Nothing unusual right now.</p>'}</div>
+  </div>
+  ${addForm(false)}`;
+}
+/* Sample alerts for sample stocks on screen + a simple big-move alert for any stock. */
+function allAlerts() {
+  const on = new Set(H.map(h => h.id));
+  const list = ALERTS.filter(a => on.has(a.h));
+  H.filter(h => h.yours && Math.abs(h.d) >= 4).forEach(h =>
+    list.push({ lvl: Math.abs(h.d) >= 7 ? "high" : "medium", h: h.id, t: `${h.d > 0 ? "Up" : "Down"} ${Math.abs(h.d).toFixed(1)}% today`, d: "Simulated move in this preview", date: "" }));
+  return list;
+}
+function holdings() {
+  if (!H.length) return emptyState();
+  const rows = H.slice().sort((a, b) => b.value - a.value);
+  return `<div class="screen-head"><h2>All holdings (${H.length})</h2><span class="small muted">Click a row to open the stock · ✕ removes it from your preview</span></div>
+  ${addForm(mine.length === 0)}
+  <div class="card"><div class="tablewrap"><table><thead><tr><th>Name</th><th>Sector</th><th>Account</th><th class="r">Qty</th><th class="r">Avg cost</th><th class="r">Price</th><th class="r">Value</th><th>Weight</th><th class="r">P&amp;L %</th><th class="r">Today</th><th>3-month trend</th><th></th></tr></thead><tbody>
+  ${rows.map(h => `<tr data-open="${h.id}" tabindex="0"><td><b>${esc(h.name)}</b> ${h.yours ? '<span class="pill">Yours</span>' : '<span class="pill grey">Sample</span>'}</td><td class="muted">${esc(h.sector)}</td><td class="muted">${esc(h.src)}</td>
+    <td class="r num">${h.qty.toLocaleString("en-IN")}</td><td class="r num">${h.avg.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td><td class="r num">${h.px.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
+    <td class="r num">${inr(h.value)}</td><td><span class="wbar"><i style="width:${Math.min(h.w * 4, 100)}%"></i></span><span class="num small">${h.w.toFixed(1)}%</span></td>
+    <td class="r num ${cls(h.pl)}">${pct(h.pl)}</td><td class="r num ${cls(h.d)}">${pct(h.d)}</td><td style="width:110px">${spark(h.hist.slice(-64), h.hist[249] >= h.hist[186] ? "var(--up)" : "var(--down)", 100, 26)}</td>
+    <td><button class="btn" data-remove="${h.id}" aria-label="Remove ${esc(h.name)}" title="Remove from your preview">✕</button></td></tr>`).join("")}
+  </tbody></table></div>
+  ${hiddenSamples.length ? `<p class="small muted" style="margin:8px 0 0">${hiddenSamples.length} sample stock(s) removed · <button class="btn" id="resetSample">Restore sample stocks</button></p>` : ""}</div>`;
+}
+function stock() {
+  if (!H.length) return emptyState();
+  const h = byId(state.stock) || H[0], n = PERIOD[state.speriod], vals = h.hist.slice(-n);
+  const items = FEED.filter(f => f.h === h.id), al = allAlerts().filter(a => a.h === h.id);
+  const tabs = [["news", "📰 News"], ["announcement", "🏛️ NSE filings"], ["events", "📅 Dividends & events"], ["custom", "🧩 Your sources"], ["ai", "✨ AI summary"]];
+  const pick = state.stab === "events" ? items.filter(i => i.k === "event" || i.k === "action") : items.filter(i => i.k === state.stab);
+  return `<div class="card" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between">
+      <div><h2 style="font-size:1.25rem">${esc(h.name)}</h2><div style="margin-top:4px"><span class="pill">${h.yours ? "Your stock" : "Sample stock"}</span><span class="pill grey">${esc(h.sector)}</span><span class="pill grey">Held in: ${esc(h.src)}</span>${h.sym ? `<span class="pill grey">${esc(h.sym)}</span>` : ""}</div></div>
+      <label class="small muted">Holding <select id="stockSel" class="btn">${H.map(x => `<option value="${x.id}" ${x.id === h.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label></div>
+    <div class="grid g4">
+      <div class="card kpi"><div class="label">Price</div><div class="value num">${h.px.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div><div class="delta ${cls(h.d)}">${pct(h.d)} today</div></div>
+      <div class="card kpi"><div class="label">Your value</div><div class="value num">${inr(h.value)}</div><div class="delta muted">${h.w.toFixed(1)}% of portfolio</div></div>
+      <div class="card kpi"><div class="label">Gain / loss</div><div class="value num ${cls(h.pl)}">${inr(h.value - h.cost)}</div><div class="delta ${cls(h.pl)}">${pct(h.pl)}</div></div>
+      <div class="card kpi"><div class="label">Quantity · avg cost</div><div class="value num">${h.qty.toLocaleString("en-IN")}</div><div class="delta muted">avg ${h.avg.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div></div></div>
+    ${al.length ? `<div class="card">${alertRows(al)}</div>` : ""}
+    <div class="grid g32">
+      <div class="card"><div class="cardhead"><h2>Price</h2>${seg("speriod", Object.keys(PERIOD), state.speriod)}</div>
+        <div class="chart">${area(vals, { ref: h.avg, refLabel: "Your avg cost " + h.avg.toLocaleString("en-IN", { maximumFractionDigits: 0 }), fmt: v => v.toFixed(0), start: state.speriod + " ago", label: h.name + " price" })}</div></div>
+      ${h.yours ? `<div class="card"><h2 style="margin-bottom:10px">Key facts</h2>
+        <p class="small muted">In the real app this shows market cap, P/E, 52-week range, next results date and dividends, collected
+        automatically from Yahoo Finance and NSE. The preview can't fetch live data for stocks you add.</p></div>` :
+      `<div class="card"><h2 style="margin-bottom:10px">Key facts</h2><div class="facts">
+        <div><span>Market cap</span><b class="num">₹${(h.px * 1.3e7 / 1e7 * 4).toFixed(0)}k Cr</b></div><div><span>P/E</span><b class="num">${(18 + h.seed % 20).toFixed(1)}</b></div>
+        <div><span>52-week range</span><b class="num">${Math.min(...h.hist).toFixed(0)} – ${Math.max(...h.hist).toFixed(0)}</b></div><div><span>Next results</span><b>12 Nov 2026</b></div>
+        <div><span>Dividend yield</span><b class="num">${(0.4 + h.seed % 5 * 0.4).toFixed(1)}%</b></div><div><span>Last split</span><b>—</b></div></div>
+        <p class="small muted" style="margin-top:12px">Sample figures for the preview.</p></div>`}</div>
+    <div class="card"><div class="itab" role="tablist">${tabs.map(([k, l]) => `<button data-stab="${k}" aria-selected="${k === state.stab}">${l}</button>`).join("")}</div>
+      ${state.stab === "ai" ? `<p><span class="pill">Notable</span> ${esc(h.name)} rose ${pct(h.d)} today. ${items.length ? "Recent coverage: " + esc(items[0].t) + "." : "No major news this week."} <span class="muted small">AI-generated summary · optional · information, not advice</span></p>`
+        : pick.length ? pick.map(i => `<div class="item"><a href="#" onclick="return false">${i.imp ? "🔴 " : ""}${esc(i.t)}</a><div class="small muted">${esc(i.s)} · ${i.date}</div></div>`).join("")
+        : `<p class="muted small">${h.yours ? "In the real app, news from trusted publishers, NSE filings and your own sources for this stock appear here." : "Nothing here for this holding in the sample data."}</p>`}</div>
+    <div class="small muted">Open on: NSE · Screener · Moneycontrol · BSE · Yahoo Finance</div>`;
+}
+function news() {
+  if (!H.length) return emptyState();
+  const on = new Set(H.map(h => h.id)), lv = state.alertLvl;
+  const al = allAlerts().filter(a => lv === "all" || a.lvl === lv);
+  const visible = FEED.filter(f => on.has(f.h));
+  const counts = {}; visible.forEach(f => counts[f.h] = (counts[f.h] || 0) + 1);
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]); const cmax = top.length ? top[0][1] : 1;
+  const feed = visible.filter(f => state.feedKind === "all" || f.k === state.feedKind);
+  const brief = [
+    on.has("RVNL") && `<li><b>RVNL wins a new order; stock up 5.6% today.</b> <span class="muted">NSE filing on 5 Nov; up about 30% in a month.</span></li>`,
+    on.has("ITC") && `<li><b>ITC results on 12 Nov.</b> <span class="muted">Board meeting to approve Q2 results and consider a dividend.</span></li>`,
+    on.has("INFY") && `<li><b>Infosys interim dividend of ₹22.</b> <span class="muted">Ex-date 18 Nov, after raising its revenue guidance.</span></li>`,
+  ].filter(Boolean);
+  return `<div class="card"><h2>☀️ Today's briefing <span class="pill grey">AI · optional</span></h2>
+      ${brief.length ? `<ol style="margin:8px 0 0; padding-left:18px; display:grid; gap:6px">${brief.join("")}</ol>`
+        : `<p class="muted small">In the real app, Claude writes the top 5 things across your holdings here (optional).</p>`}</div>
+    <div class="grid g32">
+      <div class="card"><div class="cardhead"><h2>Alerts (${al.length})</h2>${seg("alertLvl", ["all", "high", "medium", "info"], lv)}</div>${alertRows(al) || '<p class="muted small">Nothing at this level.</p>'}</div>
+      <div class="card"><h2 style="margin-bottom:8px">Who's in the news (7 days)</h2>
+        ${top.map(([id, c]) => `<div class="barrow"><span class="small">${esc(nameOf(id))}</span><span class="track"><span class="fill" style="width:${c / cmax * 100}%"></span></span><span class="small num">${c}</span></div>`).join("") || '<p class="muted small">No sample news for these stocks.</p>'}</div></div>
+    <div class="card"><div class="cardhead"><h2>Everything collected</h2>${seg("feedKind", ["all", "news", "announcement", "event", "custom"], state.feedKind)}</div>
+      ${feed.map(f => `<div class="item"><a href="#" onclick="return false">${f.imp ? "🔴 " : ""}${esc(f.t)}</a><div class="small"><span class="pill">${esc(nameOf(f.h))}</span><span class="pill grey">${KIND[f.k]}</span><span class="muted">${esc(f.s)} · ${f.date}</span></div></div>`).join("") || '<p class="muted small">Nothing of this type in the sample.</p>'}
+      ${mine.length ? '<p class="small muted" style="margin-top:8px">Stocks you added get real news and NSE filings in the full app; the preview only has sample items.</p>' : ""}</div>`;
+}
+function sources() {
+  return `<div class="card"><h2>Market &amp; official data</h2><p class="small muted">Always used. Only ticker symbols are sent, never your quantities or values.</p>
+      ${[["Yahoo Finance", "Prices, history, company facts, sectors", `✓ facts for ${H.length} of ${H.length} holdings`], ["AMFI / mfapi.in", "Mutual fund NAVs and returns", "✓ used for mutual funds"], ["NSE India", "Announcements, dividends/bonus/splits, board meetings & results", `✓ ${H.length} stocks`], ["Google News → trusted publishers", "Last 7 days of news, only from the publishers below", "✓ news checked for all holdings"]]
+        .map(([n, w, s]) => `<div class="item" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><b>${n}</b><div class="small muted">${w}</div></div><span class="small up">${s}</span></div>`).join("")}</div>
+    <div class="card"><h2 style="margin-bottom:8px">Trusted news publishers</h2><div class="toggles">
+      ${Object.entries(state.sites).map(([n, on]) => `<label class="toggle"><input type="checkbox" data-site="${esc(n)}" ${on ? "checked" : ""}> ${esc(n)}</label>`).join("")}</div>
+      <p class="small muted" style="margin-top:8px">You can add more, e.g. Zee Business.</p></div>
+    <div class="card"><h2>Your own sources</h2><p class="small muted">Add any link to monitor, e.g. a futures &amp; options page. Use {SYMBOL} for one page per stock.</p>
+      <div class="item" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><b>F&amp;O tracker</b><div class="small muted">https://example.com/fno/{SYMBOL} · tracking: open interest, futures premium · for L&amp;T</div></div><span class="small up">✓ read 1 page, 1 item</span></div>
+      <div class="item" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><b>Broker research page</b><div class="small muted">https://example.com/research · tracking: target changes</div></div><span class="small down">✗ the site blocks automated reading</span></div>
+      <div class="grid g2" style="margin-top:10px"><div class="field"><label for="srcName">Name</label><input id="srcName" placeholder="e.g. F&O open interest"></div><div class="field"><label for="srcUrl">Link</label><input id="srcUrl" placeholder="https://…"></div></div>
+      <button class="btn" id="addSrc">Add source</button> <span class="small muted" id="addSrcMsg"></span></div>`;
+}
+function setup() {
+  const FILE_NAME = { INFY: "INFOSYS", HDFCBANK: "HDFC Bank Ltd", LT: "L&T", ITC: "ITC LTD", RVNL: "Rail Vikas" };
+  const FULL = { INFY: "Infosys Limited", HDFCBANK: "HDFC Bank Limited", LT: "Larsen & Toubro Limited", ITC: "ITC Limited", RVNL: "Rail Vikas Nigam Limited" };
+  const map = H.map(h => h.yours
+    ? ["✅", h.name, h.name + " (added by you)", h.sym || "—", h.sector]
+    : ["✅", FILE_NAME[h.id] || h.name, FULL[h.id] || h.name, h.id, h.sector]);
+  const ok = map.length;
+  return `<div class="steps">
+      <div class="step"><div class="n">STEP 1</div><b>Upload your files</b><div class="small muted">Zerodha, Kotak Neo or any CSV / Excel. Columns are found automatically.</div></div>
+      <div class="step"><div class="n">STEP 2</div><b>Identify &amp; map</b><div class="small muted">Every holding is matched to its exchange symbol. Fix anything marked ⚠️.</div></div>
+      <div class="step"><div class="n">STEP 3</div><b>Update all data</b><div class="small muted">Prices, facts, NSE filings, trusted news, your sources.</div></div></div>
+    <div class="card"><div class="cardhead"><h2>Step 2 · Identify &amp; map</h2><span class="small"><b>${ok}</b> identified · <b>0</b> need your help</span></div>
+      <div class="tablewrap"><table style="min-width:560px"><thead><tr><th>Status</th><th>In your file</th><th>Identified as</th><th>Symbol</th><th>Sector</th></tr></thead><tbody>
+      ${map.map(r => `<tr><td>${r[0]}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td class="num">${r[3]}</td><td class="muted">${esc(r[4])}</td></tr>`).join("")}</tbody></table></div>
+      <p class="small muted" style="margin-top:8px">Names as they appear in a broker file (e.g. "L&amp;T", "Rail Vikas") are matched to the exact listed company.
+        Anything the app can't match is marked ⚠️ with a box to fix it.</p></div>
+    ${addForm(false)}`;
+}
+const RENDER = { overview, holdings, stock, news, sources, setup };
+
+/* ---------------- render + feedback rail ---------------- */
+function stars(key, val) {
+  return `<span class="stars" role="radiogroup" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-rate="${key}" data-val="${n}" class="${n <= val ? "on" : ""}" aria-label="${n} star${n > 1 ? "s" : ""}" aria-pressed="${n <= val}">★</button>`).join("")}</span>`;
+}
+function render() {
+  document.getElementById("tabs").innerHTML = SCREENS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${k === state.screen}">${l}</button>`).join("");
+  const label = SCREENS.find(s => s[0] === state.screen)[1];
+  document.getElementById("screen").innerHTML = RENDER[state.screen]() +
+    `<div class="rail" id="rail"><div><b>How clear is the ${esc(label)} screen?</b> ${stars(state.screen, fb.ratings[state.screen] || 0)}</div>
+     <span class="small muted">Something specific? Write it in the feedback form below.</span></div>`;
+  document.getElementById("overallStars").innerHTML = stars("overall", fb.overall);
+  document.getElementById("useChoice").innerHTML = ["Yes", "Maybe", "No"].map(o => `<button data-use="${o}" aria-pressed="${fb.use === o}">${o}</button>`).join("");
+}
+function go(screen) { state.screen = screen; render(); try { localStorage.setItem("pm_screen", screen); } catch (e) {} }
+function openStock(id) { state.stock = id; state.stab = "news"; go("stock"); document.getElementById("app").scrollIntoView({ block: "start" }); }
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("button, tr, label, a"); if (!t) return;
+  if (t.dataset.tab) return go(t.dataset.tab);
+  if (t.dataset.open) return openStock(t.dataset.open);
+  if (t.dataset.seg) { state[t.dataset.seg] = t.dataset.val; return render(); }
+  if (t.dataset.stab) { state.stab = t.dataset.stab; return render(); }
+  if (t.dataset.rate) { const v = +t.dataset.val; if (t.dataset.rate === "overall") fb.overall = v; else fb.ratings[t.dataset.rate] = v; markDirty(); return render(); }
+  if (t.dataset.use) { fb.use = t.dataset.use; markDirty(); return render(); }
+  if (t.id === "updbtn") { t.textContent = "⏳ Updating…"; setTimeout(() => { t.textContent = "🔄 Update all data"; document.getElementById("lastupd").textContent = "just now"; }, 1600); }
+  if (t.id === "addSrc") { const n = document.getElementById("srcName").value.trim(); document.getElementById("addSrcMsg").textContent = n ? `“${n}” would be added and checked on the next update (preview only).` : "Give it a name first."; }
+  if (t.dataset.remove) {
+    const id = t.dataset.remove;
+    if (mine.some(m => m.id === id)) mine = mine.filter(m => m.id !== id); else hiddenSamples.push(id);
+    saveMine(); recompute(); return render();
+  }
+  if (t.id === "resetSample") { hiddenSamples = []; saveMine(); recompute(); return render(); }
+  if (t.id === "addStock") return addStock();
+  if (t.id === "submitBtn") save();
+});
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset && e.target.dataset.open) openStock(e.target.dataset.open); });
+document.addEventListener("change", e => {
+  if (e.target.id === "stockSel") openStock(e.target.value);
+  if (e.target.dataset.site) state.sites[e.target.dataset.site] = e.target.checked;
+});
+["f_confusing", "f_missing", "f_other"].forEach(id => document.getElementById(id).addEventListener("input", e => { fb[id.slice(2)] = e.target.value; markDirty(); }));
+
+/* ---------------- adding your own stocks (kept in this browser only) ---------------- */
+function addStock() {
+  const v = id => document.getElementById(id).value.trim();
+  const msg = document.getElementById("addMsg");
+  const name = v("a_name"), qty = parseFloat(v("a_qty")), avg = parseFloat(v("a_avg"));
+  let px = parseFloat(v("a_px"));
+  if (!name) { msg.textContent = "Please enter the stock name."; msg.className = "small down"; return; }
+  if (!(qty > 0)) { msg.textContent = "Quantity must be more than 0."; msg.className = "small down"; return; }
+  if (!(avg > 0)) { msg.textContent = "Please enter the average cost per share."; msg.className = "small down"; return; }
+  if (!(px > 0)) px = avg;
+  if (mine.length >= 40) { msg.textContent = "That's plenty for a preview (40 stocks)."; msg.className = "small down"; return; }
+  const sym = v("a_sym").toUpperCase().replace(/[^A-Z0-9&\-]/g, "");
+  const id = "U" + Date.now().toString(36);
+  mine.push({ id, name, sym, sector: v("a_sector") || "Other", src: v("a_src") || "My account", qty, avg, px, seed: hashSeed(name + sym) });
+  saveMine(); recompute(); state.stock = id;
+  render();
+  const m2 = document.getElementById("addMsg");
+  if (m2) { m2.textContent = `✓ Added ${name}. It now appears on every screen — try Overview, Holdings and Stock view.`; m2.className = "small up"; }
+  const card = document.getElementById("addCard"); if (card) card.open = true;
+}
+
+/* ---------------- feedback ----------------
+   OPTIONAL: to collect answers automatically in a Google Sheet, paste your
+   Google Apps Script web-app link between the quotes (see README.md).
+   Left empty, testers get a "Copy my feedback" button and send it to you. */
+const FEEDBACK_URL = "";
+
+let dirty = false, sending = false;
+const statusEl = document.getElementById("status");
+const canSend = /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(FEEDBACK_URL);
+function setStatus(text, tone) { statusEl.textContent = text; statusEl.className = "status " + (tone || "muted"); }
+function markDirty() { dirty = true; try { localStorage.setItem("pm_draft", JSON.stringify(fb)); } catch (e) {} }
+function fillForm() {
+  document.getElementById("f_name").value = fb.name || "";
+  document.getElementById("f_confusing").value = fb.confusing; document.getElementById("f_missing").value = fb.missing; document.getElementById("f_other").value = fb.other; render();
+}
+function testerId() {
+  let id = null;
+  try { id = localStorage.getItem("pm_tester"); } catch (e) {}
+  if (!id) { id = "t" + Math.random().toString(36).slice(2, 12) + Date.now().toString(36); try { localStorage.setItem("pm_tester", id); } catch (e) {} }
+  return id;
+}
+function isEmpty() {
+  return !fb.overall && !fb.use && !Object.keys(fb.ratings).length && !fb.confusing.trim() && !fb.missing.trim() && !fb.other.trim();
+}
+function feedbackText() {
+  const r = SCREENS.map(([k, l]) => `${l}: ${fb.ratings[k] ? fb.ratings[k] + "/5" : "-"}`).join(", ");
+  return ["Portfolio Monitor preview - my feedback",
+    fb.name && fb.name.trim() && `From: ${fb.name.trim()}`,
+    `Overall: ${fb.overall ? fb.overall + "/5" : "-"} | Would use it: ${fb.use || "-"}`,
+    `Screens: ${r}`,
+    `Stocks I added: ${mine.length}`,
+    fb.confusing.trim() && `Confusing: ${fb.confusing.trim()}`,
+    fb.missing.trim() && `Missing: ${fb.missing.trim()}`,
+    fb.other.trim() && `Other: ${fb.other.trim()}`].filter(Boolean).join("\n");
+}
+function copyFeedback() {
+  const text = feedbackText(), box = document.getElementById("copyBox"), wrap = document.getElementById("copyFallback");
+  box.value = text; wrap.hidden = false;
+  const manual = () => { box.focus(); box.select();
+    setStatus("Select the text below, copy it, and send it to the person who shared this page.", "muted"); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(() => setStatus("✓ Copied. Paste it into a WhatsApp or email message to the person who shared this page.", "up"))
+      .catch(manual);
+  } else manual();
+}
+function save() {
+  if (isEmpty()) { setStatus("Please rate a screen or write something first.", "down"); return; }
+  if (!canSend) { copyFeedback(); return; }
+  if (sending) return;
+  sending = true; setStatus("Sending…");
+  const btn = document.getElementById("submitBtn"); btn.disabled = true;
+  const payload = {
+    tester: testerId(), name: (fb.name || "").slice(0, 80), overall: fb.overall, use: fb.use, ratings: { ...fb.ratings },
+    confusing: fb.confusing.slice(0, 4000), missing: fb.missing.slice(0, 4000), other: fb.other.slice(0, 4000),
+    addedStocks: mine.length, device: navigator.userAgent.slice(0, 200),
+  };
+  // text/plain + no-cors: the simplest request a Google Apps Script web app accepts from any website.
+  fetch(FEEDBACK_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
+    .then(() => { sending = false; btn.disabled = false; dirty = false;
+      setStatus("✓ Thank you — your feedback was sent. Submit again any time to update it.", "up"); })
+    .catch(() => { sending = false; btn.disabled = false;
+      setStatus("Couldn't send just now, so here's a copy instead.", "down"); copyFeedback(); });
+}
+document.getElementById("f_name").addEventListener("input", e => { fb.name = e.target.value; markDirty(); });
+
+/* ---------------- start ---------------- */
+try { const s = localStorage.getItem("pm_screen"); if (s && RENDER[s]) state.screen = s; const d = JSON.parse(localStorage.getItem("pm_draft") || "null"); if (d) Object.assign(fb, d); } catch (e) {}
+try {
+  const saved = JSON.parse(localStorage.getItem("pm_mine") || "null");
+  if (saved) {
+    mine = (saved.mine || []).filter(m => m && m.name && m.qty > 0 && m.avg > 0 && m.px > 0).slice(0, 40);
+    hiddenSamples = (saved.hiddenSamples || []).filter(id => SAMPLE.some(s => s.id === id));
+  }
+} catch (e) {}
+recompute();
+fillForm();
+document.getElementById("submitBtn").textContent = canSend ? "Submit feedback" : "Copy my feedback";
+if (canSend) document.getElementById("privacyNote").textContent =
+  "Your form answers go privately to the person who shared this page. The stocks you add stay in your browser and are never sent.";
+setStatus("");
+</script>
+</body>
+</html>
